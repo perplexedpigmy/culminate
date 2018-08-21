@@ -6,6 +6,19 @@
 #include <vector>
 #include <map>
 #include <iomanip>
+#include <algorithm>
+#include <type_traits>
+
+  struct FreeStyle
+  {
+    FreeStyle(char const * const str): _str(str) {}
+    char const * const _str;
+  };
+
+  FreeStyle operator"" _free (char const * const str, unsigned long )
+  {
+    return FreeStyle(str);
+  }
 
 
 namespace culminate
@@ -45,6 +58,7 @@ namespace culminate
       size_t size() const {  return _size; }
       const std::string& value() const { return _value; }
       justification side() const { return _side; }
+      void side(justification j) { _side = j; }
 
     private:
       std::string   _value;
@@ -85,14 +99,30 @@ namespace culminate
     public:
       Line(Level& level): _level(level) {}
 
-      template <typename T>
+      template <typename T,
+                typename std::enable_if<!std::is_integral<T>::value>::type* = nullptr>
       void add(const T& value) { add(std::to_string(value)); }
-      void add(const char* value) { add(std::string(value)); }
-      void add(const std::string& value)
+
+      template <typename T,
+                typename std::enable_if<std::is_integral<T>::value>::type* = nullptr>
+      void add(const T& value) 
       {
-        string trimmed(value);
+        Cell& added = add(std::to_string(value)); 
+        added.side(std::right);
+      }
+
+      void add(const char* value) { add(std::string(value)); }
+      Cell& add(const std::string& value)
+      {
+        std::string trimmed(value);
         trim(trimmed);
         _cell.emplace_back(trimmed, _level.columnSize(_cell.size(), trimmed.size() ) );
+        return _cell.back();
+      }
+
+      void add(const FreeStyle& f)
+      {
+        _cell.emplace_back(f._str, _level.columnSize(_cell.size(), 0) );
       }
 
       // TODO: Handle rvalue references, for increase efficiency.
@@ -113,7 +143,7 @@ namespace culminate
   };
 
   /**
-   * A heavy duty stream
+   * Heavy duty stream
    */
   class Surge
   {
@@ -144,14 +174,8 @@ namespace culminate
 
       Surge& operator<<(manipulator m)
       {
-        if (m == static_cast<manipulator>(std::endl))
-        {
-          _line.emplace_back(level());
-        }
-        else if (m == static_cast<manipulator>(std::ends))
-        {
-          flush();
-        }
+        if (m == static_cast<manipulator>(std::endl))       { _line.emplace_back(level()); }
+        else if (m == static_cast<manipulator>(std::ends))  { flush(); }
         return *this;
       }
 
