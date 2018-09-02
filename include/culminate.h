@@ -8,21 +8,49 @@
 #include <iomanip>
 #include <algorithm>
 #include <type_traits>
+#include <functional>
 
-  struct FreeStyle
-  {
-    FreeStyle(char const * const str): _str(str) {}
-    char const * const _str;
-  };
 
-  FreeStyle operator"" _free (char const * const str, unsigned long )
-  {
-    return FreeStyle(str);
+
+namespace culminate {
+
+  namespace literal {
+  
+    /**
+     * Support for free style text in the middle of the column formatting
+     **/
+    struct FreeStyle
+    {
+      FreeStyle(char const * const str): _str(str) {}
+      char const * const _str;
+    };
+    
+    FreeStyle operator"" _free (char const * const str, unsigned long )
+    {
+      return FreeStyle(str);
+    }
   }
 
-
-namespace culminate
-{
+  namespace decorator
+  {
+    using Tool = std::ostream&(*)(std::ostream&, const std::string&);
+    std::ostream& left(std::ostream& os, const std::string&) { return os << std::left; } 
+    std::ostream& right(std::ostream& os, const std::string&) { return os << std::right;}
+    std::ostream& center(std::ostream& os, const std::string& str)
+    {
+      os << std::left; 
+      std::streamsize width = os.width();
+      if ( width > str.size())
+      {
+        std::streamsize left = width - ((width + str.size()) / 2 );
+        os.width(left);
+        os << "";
+        os.width(width - left);
+      }
+      return os;
+    }
+  }
+  
   using manipulator = std::ostream&(*)(std::ostream&);
   using justification = std::ios_base& (*)(std::ios_base&);
 
@@ -46,25 +74,6 @@ namespace culminate
   {
     return ltrim(rtrim(s));
   }
-  /**
-   * One field of information abstraction
-   */
-  class Cell
-  {
-    public:
-
-      Cell(const std::string& value, size_t& size)
-      : _value(value), _size(size), _side(std::left) {}
-      size_t size() const {  return _size; }
-      const std::string& value() const { return _value; }
-      justification side() const { return _side; }
-      void side(justification j) { _side = j; }
-
-    private:
-      std::string   _value;
-      size_t&       _size;
-      justification _side;
-  };
 
   /**
    * Used as configuration class for an entire idnetiation level
@@ -73,33 +82,106 @@ namespace culminate
   class Level
   {
     public:
-      Level(size_t indentSize = 0, const std::string& sep = "  ")
-      : _indent(indentSize, ' '), _sep(sep) {}
+
+      static std::ostream& next(std::ostream& stream) { return stream; }
+      static std::ostream& prev(std::ostream& stream) { return stream; }
+
+      Level(size_t indent = 0, const std::string& sep = "  ")
+      : _indent(indent * 2, ' '), _sep(sep) {}
 
       const std::string& separator() const { return _sep; }
       const std::string& indent() const { return _indent; }
+      const size_t size() const { return _col.size(); }
 
       size_t& columnSize(size_t index, size_t newSize)
       {
-        return _col[index] = std::max(newSize, _col[index]);
+        return _col[index]._width = std::max(newSize, _col[index]._width);
       }
 
+      // A Cells Configuration
+      struct Configuration
+      {
+        enum class Type { Default, Numeric, Alpha };
+        Configuration(): _width(0), _type(Type::Default) {}
+
+        size_t                         _width;       // Coloumn width
+        Type                           _type;
+        std::vector<decorator::Tool*>  _decorators;  // Extra decorating attributes
+
+        decorator::Tool justify()
+        {
+          return _type == Type::Numeric ? decorator::right : decorator::left;
+        }
+
+        void setNumeric(bool numeric ) 
+        {
+          if(numeric)
+          {
+            if (_type == Type::Default)
+            {
+              _type = Type::Numeric; 
+            }
+          }
+          else
+          {
+            _type = Type::Alpha;
+          }
+        }
+      };
+
+      Configuration& config(size_t index) { return _col[index]; }
 
     private:
-      std::string _sep;           // Separator
-      std::string _indent;        // Indentation
-      std::map<size_t, size_t> _col;   // Index -> size
+
+      std::string                     _sep;     // Separator
+      std::string                     _indent;  // Indentation
+      std::map<size_t, Configuration> _col;     // Index -> size
+  };
+
+
+  /**
+   * One field of information abstraction
+   */
+  class Cell
+  {
+    public:
+      using ConfFunc = std::function<Level::Configuration&()>;
+
+      Cell(const std::string& value, ConfFunc getConf)
+      : _value(value), _config(getConf) 
+      {
+        _config()._width = std::max(_config()._width, value.size());
+      }
+
+      const std::string& value() const { return _value; }
+
+      size_t size() const {  return _config()._width; }
+      std::ostream& justify(std::ostream& os) const { return _config().justify()(os, _value); }
+
+      void config(std::ostream& os) const
+      {
+        os << std::setw(size());
+        justify(os);
+
+        // All the rest
+      }
+
+      void isNumeric(bool numeric) { _config().setNumeric(numeric); }
+
+    private:
+      std::string  _value;
+      ConfFunc     _config;
   };
 
   /**
-   * A line contains 1-n Cells.
+   * A Row contains 1-n Cells.
    **/
-  class Line
+  class Row
   {
     public:
-      Line(Level& level): _level(level) {}
+      Row(Level& level): _level(level) {}
 
-      template <typename T,
+      template <typename T ,
                 typename std::enable_if<!std::is_integral<T>::value>::type* = nullptr>
       void add(const T& value) { add(std::to_string(value)); }
 
@@ -107,22 +189,26 @@ namespace culminate
                 typename std::enable_if<std::is_integral<T>::value>::type* = nullptr>
       void add(const T& value) 
       {
-        Cell& added = add(std::to_string(value)); 
-        added.side(std::right);
+        Cell& added = add(std::to_string(value), true /* Numeric */); 
       }
 
       void add(const char* value) { add(std::string(value)); }
-      Cell& add(const std::string& value)
+      Cell& add(const std::string& value, bool numeric = false)
       {
         std::string trimmed(value);
         trim(trimmed);
-        _cell.emplace_back(trimmed, _level.columnSize(_cell.size(), trimmed.size() ) );
-        return _cell.back();
+        _cell.emplace_back(trimmed, [this, idx=_cell.size()]() -> Level::Configuration& { return _level.config(idx); });
+        Cell& cell = _cell.back();
+        cell.isNumeric(numeric);
+
+        return cell;
       }
 
-      void add(const FreeStyle& f)
+      void add(const literal::FreeStyle& f)
       {
-        _cell.emplace_back(f._str, _level.columnSize(_cell.size(), 0) );
+        _cell.emplace_back(f._str, []() -> Level::Configuration& { 
+          static Level::Configuration conf;
+          return conf;});
       }
 
       // TODO: Handle rvalue references, for increase efficiency.
@@ -132,7 +218,8 @@ namespace culminate
         stream << _level.indent();
         for(auto& cell : _cell)
         {
-          stream << cell.side() << std::setw( cell.size() ) << cell.value() << _level.separator();
+          cell.config(stream);
+          stream  << cell.value() << _level.separator();
         }
         stream << "\n";
       }
@@ -152,56 +239,79 @@ namespace culminate
       : _out(out), _currentLevel(0)
       {
         _level.reserve(10);
-        _line.reserve(20000);
+        _row.reserve(20000);
       }
 
       ~Surge() { flush(); }
-     void flush()
-     {
-       for(auto& line : _line)
-       {
-         line.display(_out);
-       }
-       _line.clear();
-     }
+
+      void flush()
+      {
+        // Support Titles only for first Level.
+        if (_level.size() and _title) { _title(_out, _level.front()); } 
+        for(auto& Row : _row) { Row.display(_out); }
+        _row.clear();
+      }
 
       template <typename T>
       Surge& operator<<(const T& value)
       {
-        line().add(value);
+        row().add(value);
         return *this;
+      }
+
+      void replaceRow()
+      {
+        _row.pop_back();
+        _row.emplace_back(level());
       }
 
       Surge& operator<<(manipulator m)
       {
-        if (m == static_cast<manipulator>(std::endl))       { _line.emplace_back(level()); }
+        if (m == static_cast<manipulator>(std::endl))       { _row.emplace_back(level()); }
         else if (m == static_cast<manipulator>(std::ends))  { flush(); }
+        else if (m == static_cast<manipulator>(Level::next))  { ++_currentLevel; replaceRow(); } 
+        else if (m == static_cast<manipulator>(Level::prev))  { --_currentLevel; replaceRow(); }
         return *this;
       }
 
-
-      Line& line()
+      Row& row()
       {
-        if (_line.empty())
-        {
-          _line.emplace_back(level());
-        }
-        return _line.back();
+        if (_row.empty()) { _row.emplace_back(level()); }
+        return _row.back();
       }
 
       Level& level()
       {
-        if (_level.size() <= _currentLevel)
-        {
-          _level.emplace_back();
-        }
+        if (_level.size() <= _currentLevel) { _level.emplace_back(_level.size()); }
         return _level[_currentLevel];
       }
 
+      void title(const std::vector<std::string>& names)
+      {
+        _title = [names](std::ostream& stream, Level& level) {
+          stream << level.indent();
+          for(size_t i = 0, iEnd = names.size(); i < iEnd; ++i)
+          {
+            size_t size = i < level.size() ? level.config(i)._width : names[i].size();
+            stream << std::setw(size);
+            decorator::center(stream, names[i]);
+            stream  << names[i].substr(0, size) << level.separator();
+          }
+          stream << "\n";
+          for(size_t i = 0, iEnd = names.size(); i < iEnd; ++i)
+          {
+            size_t size = i < level.size() ? level.config(i)._width : names[i].size();
+            stream  << std::setfill('-') << std::setw(size) << "" << level.separator();
+          }
+          stream << std::setfill(' ') << "\n";
+        };
+      }
+
     private:
-      std::vector<Line>   _line;
-      std::vector<Level>  _level;
-      std::ostream&       _out;
-      size_t              _currentLevel;
+      std::vector<Row>   _row;
+      std::vector<Level> _level;
+      std::ostream&      _out;
+      size_t             _currentLevel;
+      std::function<void(std::ostream&, Level&)> _title = nullptr;
   };
 };

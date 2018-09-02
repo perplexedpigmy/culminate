@@ -1,6 +1,6 @@
 all:
 	reset
-	g++ -I ../include *.cpp -o examples
+	g++ -g -I ../include *.cpp -o examples
 
 run: all
 	./examples
