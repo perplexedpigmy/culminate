@@ -34,11 +34,17 @@ namespace culminate {
   namespace decorator
   {
     using Tool = std::ostream&(*)(std::ostream&, const std::string&);
+    template <typename T, T attrib>
+    std::ostream& attr(std::ostream& os, const std::string&) { return os << attrib; }
+
+#define attribute(V) attr<decltype(V), V>
+
+
     std::ostream& left(std::ostream& os, const std::string&) { return os << std::left; } 
     std::ostream& right(std::ostream& os, const std::string&) { return os << std::right;}
     std::ostream& center(std::ostream& os, const std::string& str)
     {
-      os << std::left; 
+   //   os << std::left; 
       std::streamsize width = os.width();
       if ( width > str.size())
       {
@@ -98,15 +104,25 @@ namespace culminate {
         return _col[index]._width = std::max(newSize, _col[index]._width);
       }
 
+      void updateWidths(const std::vector<std::string>& values)
+      {
+        for(size_t i = 0, iEnd = values.size(); i < iEnd; ++i)
+        {
+          columnSize(i, values[i].size());
+        }
+      }
+
+      void indent(size_t indent) { _indent = std::string(indent, ' '); } 
+
       // A Cells Configuration
       struct Configuration
       {
         enum class Type { Default, Numeric, Alpha };
         Configuration(): _width(0), _type(Type::Default) {}
 
-        size_t                         _width;       // Coloumn width
-        Type                           _type;
-        std::vector<decorator::Tool*>  _decorators;  // Extra decorating attributes
+        size_t                        _width;       // Coloumn width
+        Type                          _type;
+        std::vector<decorator::Tool>  _decorators;  // Extra decorating attributes
 
         decorator::Tool justify()
         {
@@ -115,21 +131,22 @@ namespace culminate {
 
         void setNumeric(bool numeric ) 
         {
-          if(numeric)
+           _type = not numeric ? Type::Alpha
+                               : _type == Type::Default or _type == Type::Numeric ? Type::Numeric : Type::Alpha;
+        }
+
+        void apply(decorator::Tool decor) { _decorators.emplace_back(decor); }
+
+        void apply(std::ostream& stream, const std::string& str) const
+        {
+          for(auto decorator : _decorators)
           {
-            if (_type == Type::Default)
-            {
-              _type = Type::Numeric; 
-            }
-          }
-          else
-          {
-            _type = Type::Alpha;
+            decorator(stream, str);
           }
         }
       };
 
-      Configuration& config(size_t index) { return _col[index]; }
+      Configuration& column(size_t index) { return _col[index]; }
 
     private:
 
@@ -160,10 +177,9 @@ namespace culminate {
 
       void config(std::ostream& os) const
       {
+        _config().apply(os, _value);
         os << std::setw(size());
-        justify(os);
-
-        // All the rest
+        justify(os); 
       }
 
       void isNumeric(bool numeric) { _config().setNumeric(numeric); }
@@ -197,7 +213,7 @@ namespace culminate {
       {
         std::string trimmed(value);
         trim(trimmed);
-        _cell.emplace_back(trimmed, [this, idx=_cell.size()]() -> Level::Configuration& { return _level.config(idx); });
+        _cell.emplace_back(trimmed, [this, idx=_cell.size()]() -> Level::Configuration& { return _level.column(idx); });
         Cell& cell = _cell.back();
         cell.isNumeric(numeric);
 
@@ -252,6 +268,15 @@ namespace culminate {
         _row.clear();
       }
 
+      void indent(size_t level, size_t numSpaces)
+      {
+        if (level >  _level.size() - 1)
+        {
+          _level.resize(level + 1);
+        }
+        _level[level].indent(numSpaces);
+      }
+
       template <typename T>
       Surge& operator<<(const T& value)
       {
@@ -280,6 +305,15 @@ namespace culminate {
         return _row.back();
       }
 
+      Level& level(size_t level)
+      {
+        for (size_t i = _level.size() - 1, iEnd = level; i < iEnd; ++i)
+        {
+          _level.emplace_back( i );
+        }
+        return _level[level];
+      }
+
       Level& level()
       {
         if (_level.size() <= _currentLevel) { _level.emplace_back(_level.size()); }
@@ -292,7 +326,7 @@ namespace culminate {
           stream << level.indent();
           for(size_t i = 0, iEnd = names.size(); i < iEnd; ++i)
           {
-            size_t size = i < level.size() ? level.config(i)._width : names[i].size();
+            size_t size = i < level.size() ? level.column(i)._width : names[i].size();
             stream << std::setw(size);
             decorator::center(stream, names[i]);
             stream  << names[i].substr(0, size) << level.separator();
@@ -300,11 +334,12 @@ namespace culminate {
           stream << "\n";
           for(size_t i = 0, iEnd = names.size(); i < iEnd; ++i)
           {
-            size_t size = i < level.size() ? level.config(i)._width : names[i].size();
+            size_t size = i < level.size() ? level.column(i)._width : names[i].size();
             stream  << std::setfill('-') << std::setw(size) << "" << level.separator();
           }
           stream << std::setfill(' ') << "\n";
         };
+        level().updateWidths(names);
       }
 
     private:
