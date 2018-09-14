@@ -25,7 +25,7 @@ namespace culminate {
       char const * const _str;
     };
     
-    FreeStyle operator"" _free (char const * const str, unsigned long )
+    inline FreeStyle operator"" _free (char const * const str, unsigned long )
     {
       return FreeStyle(str);
     }
@@ -40,11 +40,11 @@ namespace culminate {
 #define attribute(V) attr<decltype(V), V>
 
 
-    std::ostream& left(std::ostream& os, const std::string&) { return os << std::left; } 
-    std::ostream& right(std::ostream& os, const std::string&) { return os << std::right;}
-    std::ostream& center(std::ostream& os, const std::string& str)
+    inline std::ostream& left(std::ostream& os, const std::string&) { return os << std::left; } 
+    inline std::ostream& right(std::ostream& os, const std::string&) { return os << std::right;}
+    inline std::ostream& center(std::ostream& os, const std::string& str)
     {
-   //   os << std::left; 
+      os << std::left; 
       std::streamsize width = os.width();
       if ( width > str.size())
       {
@@ -213,6 +213,8 @@ namespace culminate {
       {
         std::string trimmed(value);
         trim(trimmed);
+
+        // TODO: Binding on this relies on this staying at the same position. While a vector growth may invalidate it
         _cell.emplace_back(trimmed, [this, idx=_cell.size()]() -> Level::Configuration& { return _level.column(idx); });
         Cell& cell = _cell.back();
         cell.isNumeric(numeric);
@@ -251,12 +253,14 @@ namespace culminate {
   class Surge
   {
     public:
-      Surge(std::ostream& out = std::cout)
+      Surge(const std::vector<std::string>& names = {}, std::ostream& out = std::cout)
       : _out(out), _currentLevel(0)
       {
         _level.reserve(10);
-        _row.reserve(20000);
+        _row.reserve(200000); // TODO: Big reserve to avoid re-allocations, needs a more elegant solution
+        title(names);
       }
+
 
       ~Surge() { flush(); }
 
