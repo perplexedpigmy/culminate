@@ -3,12 +3,15 @@
 #include <iostream>
 #include <string>
 #include <sstream>
+#include <list>
 #include <vector>
 #include <map>
 #include <iomanip>
 #include <algorithm>
 #include <type_traits>
 #include <functional>
+#include <unordered_map>
+#include <deque>
 
 
 
@@ -254,10 +257,8 @@ namespace culminate {
   {
     public:
       Surge(const std::vector<std::string>& names = {}, std::ostream& out = std::cout)
-      : _out(out), _currentLevel(0)
+      : _out(out), _current(_level.end())
       {
-        _level.reserve(10);
-        _row.reserve(200000); // TODO: Big reserve to avoid re-allocations, needs a more elegant solution
         title(names);
       }
 
@@ -267,18 +268,9 @@ namespace culminate {
       void flush()
       {
         // Support Titles only for first Level.
-        if (_level.size() and _title) { _title(_out, _level.front()); } 
+        if (_current != _level.end() and _title) { _title(_out, *_current); } 
         for(auto& Row : _row) { Row.display(_out); }
         _row.clear();
-      }
-
-      void indent(size_t level, size_t numSpaces)
-      {
-        if (level >  _level.size() - 1)
-        {
-          _level.resize(level + 1);
-        }
-        _level[level].indent(numSpaces);
       }
 
       template <typename T>
@@ -298,8 +290,8 @@ namespace culminate {
       {
         if (m == static_cast<manipulator>(std::endl))       { _row.emplace_back(level()); }
         else if (m == static_cast<manipulator>(std::ends))  { flush(); }
-        else if (m == static_cast<manipulator>(Level::next))  { ++_currentLevel; replaceRow(); } 
-        else if (m == static_cast<manipulator>(Level::prev))  { --_currentLevel; replaceRow(); }
+        else if (m == static_cast<manipulator>(Level::next))  { nextLevel(); replaceRow(); } 
+        else if (m == static_cast<manipulator>(Level::prev))  { prevLevel(); replaceRow(); }
         return *this;
       }
 
@@ -311,17 +303,21 @@ namespace culminate {
 
       Level& level(size_t level)
       {
-        for (size_t i = _level.size() - 1, iEnd = level; i < iEnd; ++i)
+        auto itr = _level.begin();
+        for (size_t i = _level.size(); i <= level; ++i)
         {
-          _level.emplace_back( i );
+          addLevel();
         }
-        return _level[level];
+        return *_levelCache[level];
       }
 
       Level& level()
       {
-        if (_level.size() <= _currentLevel) { _level.emplace_back(_level.size()); }
-        return _level[_currentLevel];
+        if ( _current == _level.end()) 
+        { 
+          _current = addLevel();
+        }  
+        return *_current;
       }
 
       void title(const std::vector<std::string>& names)
@@ -347,10 +343,38 @@ namespace culminate {
       }
 
     private:
-      std::vector<Row>   _row;
-      std::vector<Level> _level;
-      std::ostream&      _out;
-      size_t             _currentLevel;
+      using Levels   = std::list<Level>;
+      using LevelItr = Levels::iterator;
+
+      std::deque<Row>  _row;
+      Levels            _level;
+      LevelItr          _current;
+      std::unordered_map<size_t, LevelItr> _levelCache;
+
+      std::ostream&     _out;
       std::function<void(std::ostream&, Level&)> _title = nullptr;
+
+      LevelItr  addLevel()
+      {
+          size_t index( _level.size() );
+          _level.emplace_back( index ); 
+          return _levelCache[ index ] = std::prev(_level.end());
+      }
+
+      LevelItr nextLevel()
+      {
+        if (std::next(_current) == _level.end())
+        {
+          addLevel();
+        }
+        return ++_current;
+      }
+
+      LevelItr prevLevel()
+      {
+        return --_current;
+      }
+
+
   };
 };

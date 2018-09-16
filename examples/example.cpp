@@ -15,6 +15,8 @@ int main()
   s.level(0).column(3).apply( culminate::decorator::attribute(rang::fg::reset) );
 #endif
 
+for (size_t i =0; i< 1000000; ++i)
+{
    s << 1 << 1 << "x2.5" << string("adsfdsfbc") << endl;
    s << 2 << 1 << 2.5 << string("abc") << endl;
    s << 3 << 1454 << 2.5 << string("adfbc") << endl;
@@ -26,5 +28,6 @@ int main()
    s << "4.5" << 145435 << 2.5 << string("a") << endl;
    s << culminate::Level::prev;
    s << 5 << 1 << 2.5 << string("a") << endl;
+}
    return 0;
 }
