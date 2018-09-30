@@ -36,27 +36,37 @@ namespace culminate {
 
   namespace decorator
   {
-    using Tool = std::ostream&(*)(std::ostream&, const std::string&);
-    template <typename T, T attrib>
-    std::ostream& attr(std::ostream& os, const std::string&) { return os << attrib; }
-
-#define attribute(V) attr<decltype(V), V>
-
+    using Tool = std::function<std::ostream&(std::ostream&, const std::string&)>;
 
     inline std::ostream& left(std::ostream& os, const std::string&) { return os << std::left; } 
     inline std::ostream& right(std::ostream& os, const std::string&) { return os << std::right;}
     inline std::ostream& center(std::ostream& os, const std::string& str)
     {
-      os << std::left; 
+      std::string& updateStr = const_cast<std::string&>(str);
       std::streamsize width = os.width();
       if ( width > str.size())
       {
+        size_t sz = str.size();
         std::streamsize left = width - ((width + str.size()) / 2 );
         os.width(left);
         os << "";
-        os.width(width - left);
+        os.width(width - left );
+        updateStr += std::string(width - left - sz, ' ');
       }
       return os;
+    }
+
+    template <typename T>
+    inline Tool code(const T& c)
+    {
+      return [c](std::ostream& os, const std::string&)  -> std::ostream&
+      {
+        size_t sz(os.width());
+        os.width(0);
+        os << c;
+        os.width(sz);
+        return os;
+      };
     }
   }
   
@@ -138,7 +148,7 @@ namespace culminate {
                                : _type == Type::Default or _type == Type::Numeric ? Type::Numeric : Type::Alpha;
         }
 
-        void apply(decorator::Tool decor) { _decorators.emplace_back(decor); }
+        Configuration& apply(decorator::Tool decor) { _decorators.emplace_back(decor); return *this;}
 
         void apply(std::ostream& stream, const std::string& str) const
         {
@@ -180,9 +190,9 @@ namespace culminate {
 
       void config(std::ostream& os) const
       {
-        _config().apply(os, _value);
         os << std::setw(size());
         justify(os); 
+        _config().apply(os, _value);
       }
 
       void isNumeric(bool numeric) { _config().setNumeric(numeric); }
@@ -255,6 +265,7 @@ namespace culminate {
    */
   class Surge
   {
+    
     public:
       Surge(const std::vector<std::string>& names = {}, std::ostream& out = std::cout)
       : _out(out), _current(_level.end())
@@ -374,7 +385,5 @@ namespace culminate {
       {
         return --_current;
       }
-
-
   };
 };
