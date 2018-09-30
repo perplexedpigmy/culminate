@@ -11,11 +11,9 @@ int main()
 
   s.level(0).column(3).apply(culminate::decorator::center);
   s.level(0).column(0).apply(culminate::decorator::center);
-  s.level(0).column(1).apply(culminate::decorator::center)
-                      .apply([](ostream& os, const string& s) -> ostream&  {
-    if (stoi(s) > 5 ) { size_t sz(os.width());  os.width(0); os << rang::fg::green; os.width(sz); }
-    return os;
-  });
+  s.level(0).column(1).apply(culminate::decorator::left)
+                      .apply(culminate::decorator::conditionalCode( 
+                        [](const string& s) { return stoi(s) > 10; }, rang::fg::green, rang::fg::red)); 
   s.level(0).column(2).apply(culminate::decorator::center)
                       .apply(culminate::decorator::code(rang::style::reset));
 

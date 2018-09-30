@@ -68,6 +68,19 @@ namespace culminate {
         return os;
       };
     }
+
+    template <typename T>
+    inline Tool  conditionalCode(std::function<bool(const std::string& s)> f, const T& c1, const T& c2)
+    {
+      return [f, c1, c2](std::ostream& os, const std::string& str) -> std::ostream&
+      {
+        size_t sz(os.width());
+        os.width(0);
+        os << (f(str) ? c1 : c2);
+        os.width(sz);
+        return os;
+      };
+    }
   }
   
   using manipulator = std::ostream&(*)(std::ostream&);
