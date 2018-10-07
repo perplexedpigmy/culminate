@@ -70,7 +70,7 @@ namespace culminate {
     }
 
     template <typename T>
-    inline Tool  conditionalCode(std::function<bool(const std::string& s)> f, const T& c1, const T& c2)
+    inline Tool conditionalCode(std::function<bool(const std::string&)> f, const T& c1, const T& c2)
     {
       return [f, c1, c2](std::ostream& os, const std::string& str) -> std::ostream&
       {
@@ -81,6 +81,20 @@ namespace culminate {
         return os;
       };
     }
+
+    template <typename T>
+    inline Tool conditionalCode(std::function<bool(int)> f, const T& c1, const T& c2)
+    {
+      return [f, c1, c2](std::ostream& os, const std::string& str) -> std::ostream&
+      {
+        size_t sz(os.width());
+        os.width(0);
+        os << (f(std::stoi(str)) ? c1 : c2);
+        os.width(sz);
+        return os;
+      };
+    }
+
   }
   
   using manipulator = std::ostream&(*)(std::ostream&);
@@ -143,12 +157,13 @@ namespace culminate {
       // A Cells Configuration
       struct Configuration
       {
+        enum class Order { Pre, Post };
         enum class Type { Default, Numeric, Alpha };
         Configuration(): _width(0), _type(Type::Default) {}
 
         size_t                        _width;       // Coloumn width
         Type                          _type;
-        std::vector<decorator::Tool>  _decorators;  // Extra decorating attributes
+        std::map<Order, std::vector<decorator::Tool>>  _decorators;
 
         decorator::Tool justify()
         {
@@ -161,24 +176,53 @@ namespace culminate {
                                : _type == Type::Default or _type == Type::Numeric ? Type::Numeric : Type::Alpha;
         }
 
-        Configuration& apply(decorator::Tool decor) { _decorators.emplace_back(decor); return *this;}
+        Configuration& apply(decorator::Tool pre) { _decorators[Order::Pre].emplace_back(pre); return *this;}
+        Configuration& apply(Order order, decorator::Tool pre) 
+        { 
+          _decorators[order].emplace_back(pre); 
+          return *this;
+        }
+        Configuration& apply(decorator::Tool pre, decorator::Tool post) 
+        { 
+          _decorators[Order::Pre].emplace_back(pre); 
+          _decorators[Order::Post].emplace_back(post); 
+          return *this;
+        }
 
-        void apply(std::ostream& stream, const std::string& str) const
+        void apply(Order order, std::ostream& stream, const std::string& str ) const
         {
-          for(auto decorator : _decorators)
+          auto orderItr = _decorators.find(order);
+          if (orderItr != _decorators.end())
           {
-            decorator(stream, str);
+            for(auto decorator : orderItr->second )
+            {
+              decorator(stream, str);
+            }
           }
         }
-      };
+     };
 
-      Configuration& column(size_t index) { return _col[index]; }
+     Configuration& column(size_t index) { return _col[index]; }
+
+     void config(Configuration::Order order, std::ostream& stream, const std::string value) 
+     { 
+      _row.apply(order, stream, value); 
+     }
+     void apply(int depColumn, decorator::Tool pre, decorator::Tool post) 
+     {
+       _depColumn = depColumn; 
+       _row.apply(pre, post); 
+     }
+
+     size_t depdentColumn() const { return _depColumn; }
 
     private:
 
       std::string                     _sep;     // Separator
       std::string                     _indent;  // Indentation
       std::map<size_t, Configuration> _col;     // Index -> size
+      Configuration                   _row;
+      int                             _depColumn = -1;
   };
 
 
@@ -201,11 +245,16 @@ namespace culminate {
       size_t size() const {  return _config()._width; }
       std::ostream& justify(std::ostream& os) const { return _config().justify()(os, _value); }
 
-      void config(std::ostream& os) const
+      void pre(std::ostream& os) const
       {
         os << std::setw(size());
         justify(os); 
-        _config().apply(os, _value);
+        _config().apply(Level::Configuration::Order::Pre, os, _value);
+      }
+
+      void post(std::ostream& os) const
+      {
+        _config().apply(Level::Configuration::Order::Post, os, _value);
       }
 
       void isNumeric(bool numeric) { _config().setNumeric(numeric); }
@@ -260,17 +309,25 @@ namespace culminate {
       void display(std::ostream& stream) const
       {
         stream << _level.indent();
+        std::string depValue {  (_level.depdentColumn() == -1) ? "" :  _cell[ _level.depdentColumn() ].value() };
+
+        _level.config(Level::Configuration::Order::Pre, stream, depValue );
         for(auto& cell : _cell)
         {
-          cell.config(stream);
+          cell.pre(stream);
           stream  << cell.value() << _level.separator();
+          cell.post(stream);
         }
+        _level.config(Level::Configuration::Order::Post, stream, depValue );
         stream << "\n";
       }
 
     private:
       std::vector<Cell> _cell;
       Level&            _level;
+
+    //  std::unique_ptr< std::pair<decorator::Tool, decorator::Tool> >_config;
+
   };
 
   /**

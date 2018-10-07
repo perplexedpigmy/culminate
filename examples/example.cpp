@@ -3,8 +3,12 @@
 
 using namespace culminate::literal;
 using namespace std;
+using namespace rang;
+
+
 int main()
 {
+
    culminate::Surge s;
   s.title({"num", "A very very very long title", "1234", "123", "xxx"});
   s.level(1).indent(10);
@@ -13,13 +17,18 @@ int main()
   s.level(0).column(0).apply(culminate::decorator::center);
   s.level(0).column(1).apply(culminate::decorator::left)
                       .apply(culminate::decorator::conditionalCode( 
-                        [](const string& s) { return stoi(s) > 10; }, rang::fg::green, rang::fg::red)); 
-  s.level(0).column(2).apply(culminate::decorator::center)
-                      .apply(culminate::decorator::code(rang::style::reset));
+                        [](int value) { return value > 10; }, fg::green, fg::red),
+                        culminate::decorator::code(rang::style::reset));
+  s.level(0).column(2).apply(culminate::decorator::center);
+
+  s.level(1).apply(1, culminate::decorator::conditionalCode(
+                   [](int value) { return value > 45341; }, fg::green, fg::red),
+                   culminate::decorator::code(rang::style::reset));
 
    s << 1 << 1 << "x2.5" << string("adsfdsfbc") << endl;
    s << 2 << 10 << 2.5 << string("abc") << endl;
    s << 3 << 1454 << 2.5 << string("adfbc") << endl;
+   s << 234 << 1 << "abc" << endl;
  
    s << culminate::Level::next;
 //   s << endl;
