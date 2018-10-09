@@ -152,7 +152,7 @@ namespace culminate {
         }
       }
 
-      void indent(size_t indent) { _indent = std::string(indent, ' '); } 
+      Level& indent(size_t indent) { _indent = std::string(indent, ' '); return *this; } 
 
       // A Cells Configuration
       struct Configuration
@@ -169,6 +169,8 @@ namespace culminate {
         {
           return _type == Type::Numeric ? decorator::right : decorator::left;
         }
+
+        Configuration& width(size_t w) { _width = w; return *this; }
 
         void setNumeric(bool numeric ) 
         {
@@ -308,26 +310,26 @@ namespace culminate {
 
       void display(std::ostream& stream) const
       {
-        stream << _level.indent();
-        std::string depValue {  (_level.depdentColumn() == -1) ? "" :  _cell[ _level.depdentColumn() ].value() };
-
-        _level.config(Level::Configuration::Order::Pre, stream, depValue );
-        for(auto& cell : _cell)
+        if (_cell.size())
         {
-          cell.pre(stream);
-          stream  << cell.value() << _level.separator();
-          cell.post(stream);
+          stream << _level.indent();
+          std::string depValue {  (_level.depdentColumn() == -1) ? "" :  _cell[ _level.depdentColumn() ].value() };
+
+          _level.config(Level::Configuration::Order::Pre, stream, depValue );
+          for(auto& cell : _cell)
+          {
+            cell.pre(stream);
+            stream  << cell.value() << _level.separator();
+            cell.post(stream);
+          }
+          _level.config(Level::Configuration::Order::Post, stream, depValue );
         }
-        _level.config(Level::Configuration::Order::Post, stream, depValue );
         stream << "\n";
       }
 
     private:
       std::vector<Cell> _cell;
       Level&            _level;
-
-    //  std::unique_ptr< std::pair<decorator::Tool, decorator::Tool> >_config;
-
   };
 
   /**
@@ -337,12 +339,19 @@ namespace culminate {
   {
     
     public:
-      Surge(const std::vector<std::string>& names = {}, std::ostream& out = std::cout)
-      : _out(out), _current(_level.end())
+      Surge(std::ostream& out, const std::vector<string>& i_names)
+      :_out(std::cout), _current(_level.end())
       {
-        title(names);
+        title(i_names);
       }
 
+      Surge(): Surge(std::cout, {}) {}
+
+      Surge(std::initializer_list<std::string> i_names  )
+      :Surge(std::cout, i_names)
+      {
+        title(i_names);
+      }
 
       ~Surge() { flush(); }
 
@@ -350,7 +359,7 @@ namespace culminate {
       {
         // Support Titles only for first Level.
         if (_current != _level.end() and _title) { _title(_out, *_current); } 
-        for(auto& Row : _row) { Row.display(_out); }
+        for(auto& row : _row) { row.display(_out); }
         _row.clear();
       }
 
@@ -404,21 +413,24 @@ namespace culminate {
       void title(const std::vector<std::string>& names)
       {
         _title = [names](std::ostream& stream, Level& level) {
-          stream << level.indent();
-          for(size_t i = 0, iEnd = names.size(); i < iEnd; ++i)
+          if(names.size() > 0)
           {
-            size_t size = i < level.size() ? level.column(i)._width : names[i].size();
-            stream << std::setw(size);
-            decorator::center(stream, names[i]);
-            stream  << names[i].substr(0, size) << level.separator();
+            stream << level.indent();
+            for(size_t i = 0, iEnd = names.size(); i < iEnd; ++i)
+            {
+              size_t size = i < level.size() ? level.column(i)._width : names[i].size();
+              stream << std::setw(size);
+              decorator::center(stream, names[i]);
+              stream  << names[i].substr(0, size) << level.separator();
+            }
+            stream << "\n";
+            for(size_t i = 0, iEnd = names.size(); i < iEnd; ++i)
+            {
+              size_t size = i < level.size() ? level.column(i)._width : names[i].size();
+              stream  << std::setfill('-') << std::setw(size) << "" << level.separator();
+            }
+            stream << std::setfill(' ') << "\n";
           }
-          stream << "\n";
-          for(size_t i = 0, iEnd = names.size(); i < iEnd; ++i)
-          {
-            size_t size = i < level.size() ? level.column(i)._width : names[i].size();
-            stream  << std::setfill('-') << std::setw(size) << "" << level.separator();
-          }
-          stream << std::setfill(' ') << "\n";
         };
         level().updateWidths(names);
       }
