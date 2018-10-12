@@ -161,10 +161,13 @@ namespace culminate {
         enum class Type { Default, Numeric, Alpha };
         Configuration(): _width(0), _type(Type::Default) {}
 
-        size_t                        _width;       // Coloumn width
-        Type                          _type;
+        bool    _visible = true;
+        size_t  _width;       // Coloumn width
+        Type    _type;
         std::map<Order, std::vector<decorator::Tool>>  _decorators;
 
+        bool visible() const { return _visible; }
+        Configuration& hide() { _visible = false; }
         decorator::Tool justify()
         {
           return _type == Type::Numeric ? decorator::right : decorator::left;
@@ -247,16 +250,14 @@ namespace culminate {
       size_t size() const {  return _config()._width; }
       std::ostream& justify(std::ostream& os) const { return _config().justify()(os, _value); }
 
-      void pre(std::ostream& os) const
+      void display(std::ostream& stream) const
       {
-        os << std::setw(size());
-        justify(os); 
-        _config().apply(Level::Configuration::Order::Pre, os, _value);
-      }
-
-      void post(std::ostream& os) const
-      {
-        _config().apply(Level::Configuration::Order::Post, os, _value);
+        if (_config().visible() )
+        {
+          pre(stream);
+          stream  << _value; 
+          post(stream);
+        }
       }
 
       void isNumeric(bool numeric) { _config().setNumeric(numeric); }
@@ -264,6 +265,19 @@ namespace culminate {
     private:
       std::string  _value;
       ConfFunc     _config;
+
+      void pre(std::ostream& os) const
+      {
+        _config().apply(Level::Configuration::Order::Pre, os, _value);
+        os << std::setw(size());
+        justify(os); 
+      }
+
+      void post(std::ostream& os) const
+      {
+        _config().apply(Level::Configuration::Order::Post, os, _value);
+      }
+ 
   };
 
   /**
@@ -318,9 +332,11 @@ namespace culminate {
           _level.config(Level::Configuration::Order::Pre, stream, depValue );
           for(auto& cell : _cell)
           {
-            cell.pre(stream);
-            stream  << cell.value() << _level.separator();
-            cell.post(stream);
+            cell.display(stream);
+            stream << _level.separator();
+//            cell.pre(stream);
+//            stream  << cell.value() << _level.separator();
+//            cell.post(stream);
           }
           _level.config(Level::Configuration::Order::Post, stream, depValue );
         }
@@ -339,7 +355,7 @@ namespace culminate {
   {
     
     public:
-      Surge(std::ostream& out, const std::vector<string>& i_names)
+      Surge(std::ostream& out, const std::vector<std::string>& i_names)
       :_out(std::cout), _current(_level.end())
       {
         title(i_names);

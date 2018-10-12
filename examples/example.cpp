@@ -13,6 +13,7 @@ int main()
   s.title({"num", "A very very very long title", "1234", "123", "xxx"});
   s.level(1).indent(10);
 
+  s.level(1).column(4).hide();
   s.level(0).column(3).apply(culminate::decorator::center);
   s.level(0).column(0).apply(culminate::decorator::center);
   s.level(0).column(1).apply(culminate::decorator::left)
@@ -30,12 +31,12 @@ int main()
    s << 3 << 1454 << 2.5 << string("adfbc") << endl;
    s << 234 << 1 << "abc" << endl;
  
-   s << culminate::Level::next;
 //   s << endl;
 //   s << "Some text dsfasdfsdfasdfasdf"_free << "dsfasdfsd"_free << endl;
 //   s << endl;
-   s << 4 << 45341 << 2.5 << string("a") << endl;
-   s << 4.5 << 145435 << 2.5 << string("a") << endl;
+   s << culminate::Level::next;
+   s << 4 << 45341 << 2.5 << string("a")    << "Not shown" << endl;
+   s << 4.5 << 145435 << 2.5 << string("a") << "  - \" -  " << endl;
    s << culminate::Level::prev;
    s << 10 << 345100 << 2.5 << string("a") << endl;
    return 0;
