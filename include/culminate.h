@@ -250,7 +250,7 @@ namespace culminate {
       size_t size() const {  return _config()._width; }
       std::ostream& justify(std::ostream& os) const { return _config().justify()(os, _value); }
 
-      void display(std::ostream& stream) const
+      std::ostream& display(std::ostream& stream) const
       {
         if (_config().visible() )
         {
@@ -258,6 +258,7 @@ namespace culminate {
           stream  << _value; 
           post(stream);
         }
+        return stream;
       }
 
       void isNumeric(bool numeric) { _config().setNumeric(numeric); }
@@ -332,11 +333,7 @@ namespace culminate {
           _level.config(Level::Configuration::Order::Pre, stream, depValue );
           for(auto& cell : _cell)
           {
-            cell.display(stream);
-            stream << _level.separator();
-//            cell.pre(stream);
-//            stream  << cell.value() << _level.separator();
-//            cell.post(stream);
+            cell.display(stream) << _level.separator();
           }
           _level.config(Level::Configuration::Order::Post, stream, depValue );
         }
