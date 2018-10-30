@@ -70,6 +70,23 @@ namespace culminate {
     }
 
     template <typename T>
+    inline Tool conditionalCode(std::function<bool(const std::string&)> f, const T& c)
+    {
+      return [f, c](std::ostream& os, const std::string& str) -> std::ostream&
+      {
+        if (f(str))
+        {
+          size_t sz(os.width());
+          os.width(0);
+          os << c;
+          os.width(sz);
+        }
+        return os;
+      };
+    }
+
+
+    template <typename T>
     inline Tool conditionalCode(std::function<bool(const std::string&)> f, const T& c1, const T& c2)
     {
       return [f, c1, c2](std::ostream& os, const std::string& str) -> std::ostream&
@@ -167,7 +184,7 @@ namespace culminate {
         std::map<Order, std::vector<decorator::Tool>>  _decorators;
 
         bool visible() const { return _visible; }
-        Configuration& hide() { _visible = false; }
+        Configuration& hide() { _visible = false; return *this; }
         decorator::Tool justify()
         {
           return _type == Type::Numeric ? decorator::right : decorator::left;
@@ -213,6 +230,7 @@ namespace culminate {
      { 
       _row.apply(order, stream, value); 
      }
+
      void apply(int depColumn, decorator::Tool pre, decorator::Tool post) 
      {
        _depColumn = depColumn; 
@@ -250,7 +268,7 @@ namespace culminate {
       size_t size() const {  return _config()._width; }
       std::ostream& justify(std::ostream& os) const { return _config().justify()(os, _value); }
 
-      std::ostream& display(std::ostream& stream) const
+      void display(std::ostream& stream) const
       {
         if (_config().visible() )
         {
@@ -258,7 +276,6 @@ namespace culminate {
           stream  << _value; 
           post(stream);
         }
-        return stream;
       }
 
       void isNumeric(bool numeric) { _config().setNumeric(numeric); }
@@ -333,7 +350,8 @@ namespace culminate {
           _level.config(Level::Configuration::Order::Pre, stream, depValue );
           for(auto& cell : _cell)
           {
-            cell.display(stream) << _level.separator();
+            cell.display(stream);
+            stream << _level.separator();
           }
           _level.config(Level::Configuration::Order::Post, stream, depValue );
         }
