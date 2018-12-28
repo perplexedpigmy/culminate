@@ -403,7 +403,10 @@ namespace culminate {
 
       void replaceRow()
       {
-        _row.pop_back();
+        if (_row.size())
+        {
+          _row.pop_back();
+        }
         _row.emplace_back(level());
       }
 
