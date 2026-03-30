@@ -6,6 +6,7 @@
 #include <list>
 #include <vector>
 #include <map>
+#include <array>
 #include <iomanip>
 #include <algorithm>
 #include <type_traits>
@@ -173,6 +174,7 @@ namespace culminate {
       // A Cells Configuration
       struct Configuration
       {
+        static constexpr size_t NumOrders = 2;
         enum class Order { Pre, Post };
         enum class Type { Default, Numeric, Alpha, Center };
         Configuration(): _width(0), _type(Type::Default) {}
@@ -180,20 +182,22 @@ namespace culminate {
         bool    _visible = true;
         size_t  _width;       // Coloumn width
         Type    _type;
-        std::map<Order, std::vector<decorator::Tool>>  _decorators;
+        std::array<std::vector<decorator::Tool>, NumOrders>  _decorators;
 
-        bool visible() const { return _visible; }
+        constexpr bool visible() const { return _visible; }
         Configuration& hide() { _visible = false; return *this; }
-        decorator::Tool justify()
+        decorator::Tool justify() const
         {
           if (_type == Type::Numeric) return decorator::right;
           if (_type == Type::Center) return decorator::center;
           return decorator::left;
         }
         
-        bool isCenter() const { return _type == Type::Center; }
+        constexpr bool isCenter() const { return _type == Type::Center; }
+        constexpr bool isNumeric() const { return _type == Type::Numeric || _type == Type::Alpha; }
         Configuration& center() { _type = Type::Center; return *this; }
 
+        constexpr size_t width() const { return _width; }
         Configuration& width(size_t w) { _width = w; return *this; }
 
         void setNumeric(bool numeric ) 
@@ -206,35 +210,32 @@ namespace culminate {
         }
 
         Configuration& apply(decorator::Tool pre) { 
-          _decorators[Order::Pre].emplace_back(pre); 
+          _decorators[static_cast<size_t>(Order::Pre)].emplace_back(pre); 
           return *this;
         }
         
         Configuration& apply(Order order, decorator::Tool pre) 
         { 
-          _decorators[order].emplace_back(pre); 
+          _decorators[static_cast<size_t>(order)].emplace_back(pre); 
           return *this;
         }
         
         Configuration& apply(decorator::Tool pre, decorator::Tool post) 
         { 
-          _decorators[Order::Pre].emplace_back(pre); 
-          _decorators[Order::Post].emplace_back(post); 
+          _decorators[static_cast<size_t>(Order::Pre)].emplace_back(pre); 
+          _decorators[static_cast<size_t>(Order::Post)].emplace_back(post); 
           return *this;
         }
 
         void apply(Order order, std::ostream& stream, const std::string& str ) const
         {
-          auto orderItr = _decorators.find(order);
-          if (orderItr != _decorators.end())
+          const auto& vec = _decorators[static_cast<size_t>(order)];
+          for(const auto& decorator : vec)
           {
-            for(auto decorator : orderItr->second )
-            {
-              decorator(stream, str);
-            }
+            decorator(stream, str);
           }
         }
-     };
+      };
 
      Configuration& column(size_t index) { return _col[index]; }
 
@@ -360,7 +361,7 @@ namespace culminate {
       
       Cell& add(const std::string& value, bool numeric = false)
       {
-        return add(std::string(value), numeric);  // Forward to rvalue overload
+        return add(std::string(value), numeric);
       }
 
       Cell& add(std::string&& value, bool numeric = false)
@@ -369,7 +370,7 @@ namespace culminate {
         
         // Note: Using lambda that captures idx - safe because vector doesn't invalidate on push_back
         size_t idx = _cell.size();
-        _cell.emplace_back(value, [this, idx]() -> Level::Configuration& { return _level.column(idx); });
+        _cell.emplace_back(std::move(value), [this, idx]() -> Level::Configuration& { return _level.column(idx); });
         Cell& cell = _cell.back();
         cell.isNumeric(numeric);
 
