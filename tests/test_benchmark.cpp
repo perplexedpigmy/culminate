@@ -229,15 +229,15 @@ TEST_CASE("Benchmark: Row display", "[bench-row]") {
     SECTION("Row with 50 columns") {
         culminate::Level level;
         level.indent(0);
-        for (int i = 0; i < 50; ++i) {
+        for (int i = 0; i < 10; ++i) {  // Max 12 columns
             level.column(i).width(10);
         }
         culminate::Row row(level);
-        for (int i = 0; i < 50; ++i) {
+        for (int i = 0; i < 10; ++i) {  // Max 12 columns
             row.add("c" + std::to_string(i));
         }
         
-        auto result = Benchmark("Row display 50 cols", 5000).run([&]() {
+        auto result = Benchmark("Row display 10 cols (50 test)", 5000).run([&]() {
             std::ostringstream oss;
             row.display(oss);
         });
@@ -249,15 +249,15 @@ TEST_CASE("Benchmark: Row display", "[bench-row]") {
     SECTION("Row with 100 columns") {
         culminate::Level level;
         level.indent(0);
-        for (int i = 0; i < 100; ++i) {
+        for (int i = 0; i < 12; ++i) {  // Max 12 columns
             level.column(i).width(8);
         }
         culminate::Row row(level);
-        for (int i = 0; i < 100; ++i) {
-            row.add("x" + std::to_string(i % 100));
+        for (int i = 0; i < 12; ++i) {  // Max 12 columns
+            row.add("x" + std::to_string(i % 12));
         }
         
-        auto result = Benchmark("Row display 100 cols", 2000).run([&]() {
+        auto result = Benchmark("Row display 12 cols (100 test)", 2000).run([&]() {
             std::ostringstream oss;
             row.display(oss);
         });

@@ -100,7 +100,9 @@ namespace culminate {
         os.width(0);
         try {
           os << (f(std::stoi(str)) ? c1 : c2);
-        } catch (...) {
+        } catch (const std::invalid_argument&) {
+          os << c2;
+        } catch (const std::out_of_range&) {
           os << c2;
         }
         os.width(sz);
@@ -145,6 +147,8 @@ namespace culminate {
   class Level
   {
     public:
+      // Maximum number of columns supported per Level (constrained for memory/speed tradeoff)
+      // Throws std::out_of_range if exceeded
       static constexpr size_t MaxColumns = 12;
 
       static std::ostream& next(std::ostream& stream) { return stream; }
@@ -160,8 +164,7 @@ namespace culminate {
       size_t& columnSize(size_t index, size_t newSize)
       {
         if (index >= MaxColumns) {
-          static size_t dummy = 0;
-          return dummy;
+          throw std::out_of_range("Column index " + std::to_string(index) + " exceeds MaxColumns (" + std::to_string(MaxColumns) + ")");
         }
         _colCount = std::max(_colCount, index + 1);
         return _col[index]._width = std::max(newSize, _col[index]._width);
@@ -190,29 +193,30 @@ namespace culminate {
         Type    _type;
         std::array<std::vector<decorator::Tool>, NumOrders>  _decorators;
 
-        constexpr bool visible() const { return _visible; }
+        constexpr bool visible() const noexcept { return _visible; }
         Configuration& hide() { _visible = false; return *this; }
 
         enum class JustifyType { Left, Right, Center };
-        constexpr JustifyType justifyType() const
+        constexpr JustifyType justifyType() const noexcept
         {
           if (_type == Type::Numeric) return JustifyType::Right;
           if (_type == Type::Center) return JustifyType::Center;
           return JustifyType::Left;
         }
         
+        constexpr bool isCenter() const noexcept { return _type == Type::Center; }
+        constexpr bool isNumeric() const noexcept { return _type == Type::Numeric || _type == Type::Alpha; }
+        Configuration& center() { _type = Type::Center; return *this; }
+
+        // Returns the alignment function for this column
         decorator::Tool justify() const
         {
           if (_type == Type::Numeric) return decorator::right;
           if (_type == Type::Center) return decorator::center;
           return decorator::left;
         }
-        
-        constexpr bool isCenter() const { return _type == Type::Center; }
-        constexpr bool isNumeric() const { return _type == Type::Numeric || _type == Type::Alpha; }
-        Configuration& center() { _type = Type::Center; return *this; }
 
-        constexpr size_t width() const { return _width; }
+        constexpr size_t width() const noexcept { return _width; }
         Configuration& width(size_t w) { _width = w; return *this; }
 
         void setNumeric(bool numeric ) 
@@ -254,8 +258,7 @@ namespace culminate {
 
       Configuration& column(size_t index) { 
         if (index >= MaxColumns) {
-          static Configuration dummy;
-          return dummy;
+          throw std::out_of_range("Column index " + std::to_string(index) + " exceeds MaxColumns (" + std::to_string(MaxColumns) + ")");
         }
         _colCount = std::max(_colCount, index + 1);
         return _col[index]; 
@@ -352,7 +355,7 @@ namespace culminate {
       void isNumeric(bool numeric) { getConfig().setNumeric(numeric); }
 
     private:
-      mutable const Level::Configuration* _confPtr;  // Cached pointer
+      mutable Level::Configuration* _confPtr;  // Cached pointer
       std::string  _value;
       ConfFunc     _config;
       bool         _isCenter;
@@ -362,7 +365,7 @@ namespace culminate {
         if (!_confPtr) {
           _confPtr = &_config();
         }
-        return const_cast<Level::Configuration&>(*_confPtr);
+        return *_confPtr;
       }
 
       void pre(std::ostream& os) const
@@ -440,7 +443,11 @@ namespace culminate {
         if (_cell.size())
         {
           stream << _level.indent();
-          std::string depValue {  (_level.depdentColumn() == -1) ? "" :  _cell[ static_cast<size_t>(_level.depdentColumn()) ].value() };
+          std::string depValue;
+          int depCol = _level.depdentColumn();
+          if (depCol >= 0 && static_cast<size_t>(depCol) < _cell.size()) {
+            depValue = _cell[static_cast<size_t>(depCol)].value();
+          }
 
           _level.config(Level::Configuration::Order::Pre, stream, depValue );
           for(auto& cell : _cell)
@@ -473,6 +480,8 @@ namespace culminate {
       };
 
     public:
+      // Maximum number of levels cached in Surge (for O(1) level access)
+      // Levels beyond this use fallback iteration
       static constexpr size_t MaxLevels = 128;
       Surge(std::ostream& out, const std::vector<std::string>& i_names)
       :_current(_level.end()), _out(out)
