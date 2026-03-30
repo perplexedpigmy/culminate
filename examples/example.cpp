@@ -1,119 +1,155 @@
-#include "culminate.h"
+#include "culminate/culminate.h"
 #include "rang.hpp"
-#include <set>
-#include <string>
-#include <map>
-
+#include <iostream>
 
 using namespace culminate::literal;
 using namespace std;
 using namespace rang;
 
-
 int main()
 {
-  {
-   culminate::Surge s;
-  s.title({"num", "A very very very long title", "1234", "123", "xxx"});
-  s.level(1).indent(10);
+    cout << fg::blue << "=== Example 1: Employee Table ===" << fg::reset << endl << endl;
 
-  s.level(1).column(4).hide();
-  s.level(0).column(3).apply(culminate::decorator::center);
-  s.level(0).column(0).apply(culminate::decorator::center);
-  s.level(0).column(1).apply(culminate::decorator::left)
-                      .apply(culminate::decorator::conditionalCode( 
-                        [](int value) { return value > 10; }, fg::green, fg::red),
-                        culminate::decorator::code(rang::style::reset));
-  s.level(0).column(2).apply(culminate::decorator::center);
+    {
+        culminate::Surge s;
+        s.title({"ID", "Name", "Department", "Salary", "Active"});
 
-  s.level(1).apply(1, culminate::decorator::conditionalCode(
-                   [](int value) { return value > 0; }, fg::green, fg::red),
-                   culminate::decorator::code(rang::style::reset));
+        // Column 0: Right-aligned (numeric)
+        s.level(0).column(0).setNumeric(true);
+        
+        // Column 1: Center-aligned
+        s.level(0).column(1).center();
+        
+        // Column 3: Conditional formatting with two colors
+        s.level(0).column(3).apply(
+            culminate::decorator::conditionalCode(
+                [](int value) { return value >= 80000; },
+                fg::green, fg::red
+            ),
+            culminate::decorator::code(rang::style::reset)
+        );
+        
+        // Column 4: Boolean status with color
+        s.level(0).column(4).apply(
+            culminate::decorator::conditionalCode(
+                [](bool val) { return val; },
+                fg::green, fg::red
+            ),
+            culminate::decorator::code(rang::style::reset)
+        );
 
-   s << 1 << 1 << "x2.5" << string("adsfdsfbc") << endl;
-   s << 2 << 10 << 2.5 << string("abc") << endl;
-   s << 3 << 1454 << 2.5 << string("adfbc") << endl;
-   s << 234 << 1 << "abc" << endl;
- 
-//   s << endl;
-//   s << "Some text dsfasdfsdfasdfasdf"_free << "dsfasdfsd"_free << endl;
-//   s << endl;
-   s << culminate::Level::next;
-   s << 4 << 45341 << 2.5 << string("a")    << 0<< endl;
-   s << 4.5 << 145435 << 2.5 << string("a") << 1 << endl;
-   s << culminate::Level::prev;
-   s << 10 << 345100 << 2.5 << string("a") << endl;
+        // Add employee data
+        s << 1 << "Alice"   << "Engineering" << 85000  << true  << endl;
+        s << 2 << "Bob"     << "Marketing"   << 65000  << false << endl;
+        s << 3 << "Charlie" << "Engineering" << 95000  << true  << endl;
+        s << 4 << "Diana"   << "Sales"       << 72000  << true  << endl;
+        s << 5 << "Eve"      << "HR"          << 55000  << false << endl;
+    }
 
-   }
-   {
-   culminate::Surge s{"   1    ", "    2    "};
-//    s.level(0).apply(1, culminate::decorator::conditionalCode(
-//                   [](int value) { return value > 0; }, fg::gray, fg::red),
-//                   culminate::decorator::code(rang::style::reset));
-    s.level(1).apply(4, culminate::decorator::conditionalCode(
-                   [](int value) { return value > 0; }, fg::gray, fg::red),
-                    culminate::decorator::code(rang::style::reset));
-    s.level(0).column(1).hide();
-    s.level(1).column(4).hide();
+    cout << fg::blue << "\n=== Example 2: Sales Report ===" << fg::reset << endl << endl;
 
+    {
+        culminate::Surge s;
+        s.title({"Region", "Product", "Sales", "Target", "Status"});
+        
+        // Numeric columns
+        s.level(0).column(2).setNumeric(true);
+        s.level(0).column(3).setNumeric(true);
+        
+        // Conditional: target met or not
+        s.level(0).column(4).apply(
+            culminate::decorator::conditionalCode(
+                [](int met) { return met > 0; },
+                fg::green, fg::red
+            ),
+            culminate::decorator::code(rang::style::reset)
+        );
 
-   map<string, map<size_t,string>> lf { {"DR1",{ { 1, "abc" }, { 2, "def" } } },
-                                         {"DR2",{ { 1, "abc" }               } },
-                                         {"DR4",{               { 2, "def" } } },
-                                         {"DR5",{                            } },
-                                         {"DR6",{               { 2, "def" } } } };
+        // Sales data
+        s << "North" << "Widgets" << 1500 << 1000 << 1 << endl;
+        s << "North" << "Gadgets" <<  800 << 1000 << 0 << endl;
+        s << "South" << "Widgets" << 2000 << 1500 << 1 << endl;
+        s << "South" << "Gadgets" << 1200 << 1500 << 0 << endl;
+        s << "East"  << "Widgets" << 1800 << 1200 << 1 << endl;
+        s << "West"  << "Widgets" <<  900 << 1200 << 0 << endl;
+    }
 
-   map<string, map<size_t,string>> rt { {"DR1",{ { 1, "abc" }, { 2, "def" } } },
-                                        {"DR2",{               { 2, "def" } } },
-                                        {"DR3",{ { 1, "abc" }, { 2, "def" } } },
-                                        {"DR4",{               { 2, "dxf" } } },
-                                        {"DR5",{                            } } };
-   set<string> keys;
-   for (const auto& e : lf) { keys.emplace(e.first); }
-   for (const auto& e : rt) { keys.emplace(e.first); }
+    cout << fg::blue << "\n=== Example 3: Simple Grid ===" << fg::reset << endl << endl;
 
-   for (const auto& key : keys)
-   {
-      auto lItr = lf.find(key);
-      auto rItr = rt.find(key);
+    {
+        culminate::Surge s;
+        s.title({"A", "B", "C"});
+        
+        s << 1 << 2 << 3 << endl;
+        s << 4 << 5 << 6 << endl;
+        s << 7 << 8 << 9 << endl;
+    }
 
-      s << key
-        << (lItr != lf.end() and rItr != rt.end()) << endl << culminate::Level::next;
+    cout << fg::blue << "\n=== Example 4: Project Status ===" << fg::reset << endl << endl;
 
-      set<size_t> piKeys;
-      for (const auto& e : lf[key]) { piKeys.emplace(e.first); }
-      for (const auto& e : rt[key]) { piKeys.emplace(e.first); }
+    {
+        culminate::Surge s;
+        s.title({"Project", "Progress", "Team", "Risk", "Done"});
+        
+        // Center-aligned project names
+        s.level(0).column(0).center();
+        
+        // Numeric for progress
+        s.level(0).column(1).setNumeric(true);
+        
+        // Risk level (0=low, 1=medium, 2=high)
+        s.level(0).column(3).apply(
+            culminate::decorator::conditionalCode(
+                [](int risk) { return risk == 0; },
+                fg::green, fg::red
+            ),
+            culminate::decorator::code(rang::style::reset)
+        );
+        
+        // Completion status
+        s.level(0).column(4).apply(
+            culminate::decorator::conditionalCode(
+                [](bool complete) { return complete; },
+                fg::green, fg::yellow
+            ),
+            culminate::decorator::code(rang::style::reset)
+        );
 
-      for (const auto& piKey : piKeys)
-      {
-        auto lpiItr = lf[key].find(piKey);
-        auto rpiItr = rt[key].find(piKey);
+        // Projects (risk: 0=low, 1=medium, 2=high)
+        s << "Website Redesign" << 100 << "Team A" << 0 << true << endl;
+        s << "Mobile App"       <<  75 << "Team B" << 1 << false << endl;
+        s << "Database Migrate"  <<  50 << "Team C" << 1 << false << endl;
+        s << "API v2"          <<  25 << "Team A" << 2 << false << endl;
+    }
 
-        if (lpiItr == lf[key].end())
-        {
-          s << "" << ""; 
-        }
-        else 
-        {
-          s << lpiItr->first << lpiItr->second; 
-        }
+    cout << fg::blue << "\n=== Example 5: Multi-Level with Indentation ===" << fg::reset << endl << endl;
 
-        if (rpiItr== rt[key].end())
-        {
-          s << "" << "";
-        }
-        else 
-        {
-          s << rpiItr->first << rpiItr->second; 
-        }
+    {
+        culminate::Surge s;
+        s.title({"Level 1", "Level 2", "Value"});
+        
+        // Level 1 indentation
+        s.level(1).indent(4);
+        
+        // Level 2 indentation  
+        s.level(2).indent(8);
+        
+        // Numeric value
+        s.level(2).column(2).setNumeric(true);
 
-        s << (lpiItr != lf[key].end() and rpiItr != rt[key].end() and lpiItr->first == rpiItr->first and lpiItr->second == rpiItr->second) << endl;
-      }
+        // Category A
+        s << "Category A" << "Item 1" << 100 << culminate::Level::next;
+        s << ""           << "Item 2" << 200 << culminate::Level::next;
+        s << ""           << "Item 3" << 150 << culminate::Level::next;
+        s << culminate::Level::prev;
 
-      s << culminate::Level::prev;
-   }
+        // Category B
+        s << "Category B" << "Item 1" << 300 << culminate::Level::next;
+        s << ""           << "Item 2" << 250 << culminate::Level::next;
+        s << culminate::Level::prev;
+    }
 
-   } 
+    cout << fg::blue << "\nDone!" << fg::reset << endl;
 
-   return 0;
+    return 0;
 }

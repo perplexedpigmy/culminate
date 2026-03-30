@@ -1,0 +1,14 @@
+{
+  "benchmarks": [
+    {
+      "name": "Row display 100 cols",
+      "min_ns": 11741.00,
+      "max_ns": 54528.00,
+      "mean_ns": 14392.40,
+      "median_ns": 12478.00,
+      "stddev_ns": 4033.70,
+      "throughput_ops_sec": 80141.05,
+      "iterations": 2000
+    }
+  ]
+}

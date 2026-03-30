@@ -1,0 +1,14 @@
+{
+  "benchmarks": [
+    {
+      "name": "Trim long string",
+      "min_ns": 124.00,
+      "max_ns": 23058.00,
+      "mean_ns": 182.15,
+      "median_ns": 159.00,
+      "stddev_ns": 138.50,
+      "throughput_ops_sec": 6289308.18,
+      "iterations": 100000
+    }
+  ]
+}

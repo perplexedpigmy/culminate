@@ -1,0 +1,14 @@
+{
+  "benchmarks": [
+    {
+      "name": "Mixed alignment row",
+      "min_ns": 667.00,
+      "max_ns": 27843.00,
+      "mean_ns": 1019.20,
+      "median_ns": 961.00,
+      "stddev_ns": 391.77,
+      "throughput_ops_sec": 1040582.73,
+      "iterations": 20000
+    }
+  ]
+}

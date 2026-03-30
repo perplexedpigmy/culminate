@@ -1,0 +1,234 @@
+{
+  "benchmarks": [
+    {
+      "name": "Cell display 5 chars",
+      "min_ns": 270.00,
+      "max_ns": 117271.00,
+      "mean_ns": 381.60,
+      "median_ns": 327.00,
+      "stddev_ns": 545.26,
+      "throughput_ops_sec": 3058103.98,
+      "iterations": 50000
+    },
+    {
+      "name": "Cell display 20 chars",
+      "min_ns": 365.00,
+      "max_ns": 7939.00,
+      "mean_ns": 541.86,
+      "median_ns": 482.00,
+      "stddev_ns": 159.61,
+      "throughput_ops_sec": 2074688.80,
+      "iterations": 50000
+    },
+    {
+      "name": "Cell display center",
+      "min_ns": 392.00,
+      "max_ns": 17209.00,
+      "mean_ns": 663.71,
+      "median_ns": 649.00,
+      "stddev_ns": 225.47,
+      "throughput_ops_sec": 1540832.05,
+      "iterations": 50000
+    },
+    {
+      "name": "Cell display numeric",
+      "min_ns": 365.00,
+      "max_ns": 23131.00,
+      "mean_ns": 556.21,
+      "median_ns": 525.00,
+      "stddev_ns": 224.02,
+      "throughput_ops_sec": 1904761.90,
+      "iterations": 50000
+    },
+    {
+      "name": "Row display 5 cols",
+      "min_ns": 670.00,
+      "max_ns": 11197.00,
+      "mean_ns": 784.27,
+      "median_ns": 747.00,
+      "stddev_ns": 172.93,
+      "throughput_ops_sec": 1338688.09,
+      "iterations": 20000
+    },
+    {
+      "name": "Row display 10 cols",
+      "min_ns": 1075.00,
+      "max_ns": 28086.00,
+      "mean_ns": 1903.38,
+      "median_ns": 1828.00,
+      "stddev_ns": 663.79,
+      "throughput_ops_sec": 547045.95,
+      "iterations": 10000
+    },
+    {
+      "name": "Row display 50 cols",
+      "min_ns": 3988.00,
+      "max_ns": 19272.00,
+      "mean_ns": 5591.42,
+      "median_ns": 5183.00,
+      "stddev_ns": 1389.58,
+      "throughput_ops_sec": 192938.45,
+      "iterations": 5000
+    },
+    {
+      "name": "Row display 100 cols",
+      "min_ns": 7603.00,
+      "max_ns": 20259.00,
+      "mean_ns": 8762.09,
+      "median_ns": 8676.00,
+      "stddev_ns": 768.99,
+      "throughput_ops_sec": 115260.49,
+      "iterations": 2000
+    },
+    {
+      "name": "Trim 6 strings",
+      "min_ns": 790.00,
+      "max_ns": 13732.00,
+      "mean_ns": 1127.30,
+      "median_ns": 1018.00,
+      "stddev_ns": 321.14,
+      "throughput_ops_sec": 982318.27,
+      "iterations": 50000
+    },
+    {
+      "name": "Trim short string",
+      "min_ns": 137.00,
+      "max_ns": 18861.00,
+      "mean_ns": 180.36,
+      "median_ns": 159.00,
+      "stddev_ns": 97.80,
+      "throughput_ops_sec": 6289308.18,
+      "iterations": 100000
+    },
+    {
+      "name": "Trim long string",
+      "min_ns": 125.00,
+      "max_ns": 24644.00,
+      "mean_ns": 151.51,
+      "median_ns": 138.00,
+      "stddev_ns": 103.70,
+      "throughput_ops_sec": 7246376.81,
+      "iterations": 100000
+    },
+    {
+      "name": "Justify lookup",
+      "min_ns": 33.00,
+      "max_ns": 5817.00,
+      "mean_ns": 36.99,
+      "median_ns": 36.00,
+      "stddev_ns": 24.95,
+      "throughput_ops_sec": 27777777.78,
+      "iterations": 100000
+    },
+    {
+      "name": "isCenter check",
+      "min_ns": 14.00,
+      "max_ns": 5110.00,
+      "mean_ns": 21.02,
+      "median_ns": 18.00,
+      "stddev_ns": 20.42,
+      "throughput_ops_sec": 55555555.56,
+      "iterations": 100000
+    },
+    {
+      "name": "width() call",
+      "min_ns": 13.00,
+      "max_ns": 3831.00,
+      "mean_ns": 18.70,
+      "median_ns": 17.00,
+      "stddev_ns": 13.73,
+      "throughput_ops_sec": 58823529.41,
+      "iterations": 100000
+    },
+    {
+      "name": "Surge render 10x5",
+      "min_ns": 15659.00,
+      "max_ns": 88284.00,
+      "mean_ns": 21293.64,
+      "median_ns": 19143.00,
+      "stddev_ns": 5443.69,
+      "throughput_ops_sec": 52238.42,
+      "iterations": 5000
+    },
+    {
+      "name": "Surge render 50x10",
+      "min_ns": 50465.00,
+      "max_ns": 177240.00,
+      "mean_ns": 69522.78,
+      "median_ns": 60658.00,
+      "stddev_ns": 19659.30,
+      "throughput_ops_sec": 16485.87,
+      "iterations": 1000
+    },
+    {
+      "name": "Mixed alignment row",
+      "min_ns": 577.00,
+      "max_ns": 9021.00,
+      "mean_ns": 701.31,
+      "median_ns": 667.00,
+      "stddev_ns": 287.71,
+      "throughput_ops_sec": 1499250.37,
+      "iterations": 20000
+    },
+    {
+      "name": "Decorator code asterisk",
+      "min_ns": 302.00,
+      "max_ns": 13602.00,
+      "mean_ns": 445.49,
+      "median_ns": 427.00,
+      "stddev_ns": 163.45,
+      "throughput_ops_sec": 2341920.37,
+      "iterations": 50000
+    },
+    {
+      "name": "Decorator code hash",
+      "min_ns": 300.00,
+      "max_ns": 14187.00,
+      "mean_ns": 445.89,
+      "median_ns": 378.00,
+      "stddev_ns": 202.69,
+      "throughput_ops_sec": 2645502.65,
+      "iterations": 50000
+    },
+    {
+      "name": "Decorator conditional empty",
+      "min_ns": 440.00,
+      "max_ns": 19862.00,
+      "mean_ns": 622.68,
+      "median_ns": 548.00,
+      "stddev_ns": 236.84,
+      "throughput_ops_sec": 1824817.52,
+      "iterations": 50000
+    },
+    {
+      "name": "Decorator conditional non-empty",
+      "min_ns": 334.00,
+      "max_ns": 38742.00,
+      "mean_ns": 488.50,
+      "median_ns": 426.00,
+      "stddev_ns": 244.13,
+      "throughput_ops_sec": 2347417.84,
+      "iterations": 50000
+    },
+    {
+      "name": "Decorator pre-post",
+      "min_ns": 337.00,
+      "max_ns": 19721.00,
+      "mean_ns": 464.72,
+      "median_ns": 416.00,
+      "stddev_ns": 181.27,
+      "throughput_ops_sec": 2403846.15,
+      "iterations": 50000
+    },
+    {
+      "name": "Decorator chained",
+      "min_ns": 438.00,
+      "max_ns": 15705.00,
+      "mean_ns": 615.07,
+      "median_ns": 555.00,
+      "stddev_ns": 204.66,
+      "throughput_ops_sec": 1801801.80,
+      "iterations": 50000
+    }
+  ]
+}

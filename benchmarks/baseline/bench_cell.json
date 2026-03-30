@@ -1,0 +1,14 @@
+{
+  "benchmarks": [
+    {
+      "name": "Cell display numeric",
+      "min_ns": 429.00,
+      "max_ns": 9470.00,
+      "mean_ns": 694.50,
+      "median_ns": 624.00,
+      "stddev_ns": 279.57,
+      "throughput_ops_sec": 1602564.10,
+      "iterations": 50000
+    }
+  ]
+}
