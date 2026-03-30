@@ -1,0 +1,14 @@
+{
+  "benchmarks": [
+    {
+      "name": "width() call",
+      "min_ns": 34.00,
+      "max_ns": 8335.00,
+      "mean_ns": 47.41,
+      "median_ns": 40.00,
+      "stddev_ns": 38.28,
+      "throughput_ops_sec": 25000000.00,
+      "iterations": 100000
+    }
+  ]
+}
