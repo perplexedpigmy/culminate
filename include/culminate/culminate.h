@@ -145,6 +145,7 @@ namespace culminate {
   class Level
   {
     public:
+      static constexpr size_t MaxColumns = 12;
 
       static std::ostream& next(std::ostream& stream) { return stream; }
       static std::ostream& prev(std::ostream& stream) { return stream; }
@@ -154,10 +155,15 @@ namespace culminate {
 
       const std::string& separator() const { return _sep; }
       const std::string& indent() const { return _indent; }
-      size_t size() const { return _col.size(); }
+      size_t size() const { return _colCount; }
 
       size_t& columnSize(size_t index, size_t newSize)
       {
+        if (index >= MaxColumns) {
+          static size_t dummy = 0;
+          return dummy;
+        }
+        _colCount = std::max(_colCount, index + 1);
         return _col[index]._width = std::max(newSize, _col[index]._width);
       }
 
@@ -246,26 +252,34 @@ namespace culminate {
         }
       };
 
-     Configuration& column(size_t index) { return _col[index]; }
+      Configuration& column(size_t index) { 
+        if (index >= MaxColumns) {
+          static Configuration dummy;
+          return dummy;
+        }
+        _colCount = std::max(_colCount, index + 1);
+        return _col[index]; 
+      }
 
-     void config(Configuration::Order order, std::ostream& stream, const std::string value) 
-     { 
-      _row.apply(order, stream, value); 
-     }
+      void config(Configuration::Order order, std::ostream& stream, const std::string value) 
+      { 
+       _row.apply(order, stream, value); 
+      }
 
-     void apply(int depColumn, decorator::Tool pre, decorator::Tool post) 
-     {
-       _depColumn = depColumn; 
-       _row.apply(pre, post); 
-     }
+      void apply(int depColumn, decorator::Tool pre, decorator::Tool post) 
+      {
+        _depColumn = depColumn; 
+        _row.apply(pre, post); 
+      }
 
-      int depdentColumn() const { return _depColumn; }
+       int depdentColumn() const { return _depColumn; }
 
     private:
 
       std::string                     _sep;     // Separator
       std::string                     _indent;  // Indentation
-      std::unordered_map<size_t, Configuration> _col;     // Index -> size
+      std::array<Configuration, MaxColumns> _col;     // Fixed-size array
+      size_t                          _colCount = 0;
       Configuration                   _row;
       int                             _depColumn = -1;
   };
