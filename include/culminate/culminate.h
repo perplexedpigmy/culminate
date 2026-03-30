@@ -271,7 +271,7 @@ namespace culminate {
       using ConfFunc = std::function<Level::Configuration&()>;
 
       Cell(const std::string& value, ConfFunc getConf)
-      : _confPtr(nullptr), _value(value), _config(getConf)
+      : _confPtr(nullptr), _value(value), _config(getConf), _justifyTool(getConf().justify())
       {
         auto& conf = getConfig();
         conf._width = std::max(conf._width, value.size());
@@ -280,7 +280,7 @@ namespace culminate {
       const std::string& value() const { return _value; }
 
       size_t size() const { return getConfig()._width; }
-      std::ostream& justify(std::ostream& os) const { return getConfig().justify()(os, _value); }
+      std::ostream& justify(std::ostream& os) const { return _justifyTool(os, _value); }
 
       void display(std::ostream& stream) const
       {
@@ -314,6 +314,7 @@ namespace culminate {
       mutable const Level::Configuration* _confPtr;  // Cached pointer
       std::string  _value;
       ConfFunc     _config;
+      decorator::Tool _justifyTool;  // Cached justify function
 
       Level::Configuration& getConfig() const {
         if (!_confPtr) {
