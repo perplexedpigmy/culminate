@@ -294,10 +294,12 @@ namespace culminate {
       using ConfFunc = std::function<Level::Configuration&()>;
 
       Cell(const std::string& value, ConfFunc getConf)
-      : _confPtr(nullptr), _value(value), _config(getConf)
+      : _confPtr(nullptr), _value(value), _config(getConf), _isCenter(false), _justifyType(Level::Configuration::JustifyType::Left)
       {
         auto& conf = getConfig();
         conf._width = std::max(conf._width, value.size());
+        _isCenter = conf.isCenter();
+        _justifyType = conf.justifyType();
       }
 
       // Disable copy - use move instead
@@ -313,10 +315,9 @@ namespace culminate {
       size_t size() const { return getConfig()._width; }
       
       std::ostream& justify(std::ostream& os) const {
-        auto jt = getConfig().justifyType();
-        if (jt == Level::Configuration::JustifyType::Right) {
+        if (_justifyType == Level::Configuration::JustifyType::Right) {
           return os << std::right;
-        } else if (jt == Level::Configuration::JustifyType::Center) {
+        } else if (_justifyType == Level::Configuration::JustifyType::Center) {
           return os;  // Center handled in display()
         }
         return os << std::left;
@@ -326,7 +327,7 @@ namespace culminate {
       {
         if (getConfig().visible())
         {
-          if (getConfig().isCenter()) {
+          if (_isCenter) {
             // Handle center alignment specially
             size_t width = size();
             size_t strLen = _value.size();
@@ -334,9 +335,9 @@ namespace culminate {
               size_t totalPad = width - strLen;
               size_t leftPad = totalPad / 2;
               size_t rightPad = totalPad - leftPad;
-              stream << std::string(leftPad, ' ');
+              if (leftPad > 0) stream << std::string(leftPad, ' ');
               stream << _value;
-              stream << std::string(rightPad, ' ');
+              if (rightPad > 0) stream << std::string(rightPad, ' ');
             } else {
               stream << _value;
             }
@@ -354,6 +355,8 @@ namespace culminate {
       mutable const Level::Configuration* _confPtr;  // Cached pointer
       std::string  _value;
       ConfFunc     _config;
+      bool         _isCenter;
+      Level::Configuration::JustifyType _justifyType;
 
       Level::Configuration& getConfig() const {
         if (!_confPtr) {
@@ -382,7 +385,12 @@ namespace culminate {
   class Row
   {
     public:
-      Row(Level& level): _level(level) {}
+      Row(Level& level): _level(level) {
+        size_t colCount = level.size();
+        if (colCount > 0) {
+          _cell.reserve(colCount);
+        }
+      }
 
       template <typename T ,
                 typename std::enable_if<!std::is_integral<T>::value>::type* = nullptr>
