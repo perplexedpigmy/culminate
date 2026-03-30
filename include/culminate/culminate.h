@@ -300,6 +300,14 @@ namespace culminate {
         conf._width = std::max(conf._width, value.size());
       }
 
+      // Disable copy - use move instead
+      Cell(const Cell&) = delete;
+      Cell& operator=(const Cell&) = delete;
+
+      // Enable move
+      Cell(Cell&&) = default;
+      Cell& operator=(Cell&&) = default;
+
       const std::string& value() const { return _value; }
 
       size_t size() const { return getConfig()._width; }
@@ -447,12 +455,22 @@ namespace culminate {
    */
   class Surge
   {
-    
+    private:
+      using Levels   = std::list<Level>;
+      using LevelItr = Levels::iterator;
+
+      struct LevelCacheEntry {
+        bool valid = false;
+        LevelItr itr;
+      };
+
     public:
+      static constexpr size_t MaxLevels = 128;
       Surge(std::ostream& out, const std::vector<std::string>& i_names)
       :_current(_level.end()), _out(out)
       {
         title(i_names);
+        level().updateWidths(i_names);
       }
 
       Surge(): Surge(std::cout, {}) {}
@@ -461,6 +479,7 @@ namespace culminate {
       :Surge(std::cout, i_names)
       {
         title(i_names);
+        level().updateWidths(i_names);
       }
 
       ~Surge() { flush(); }
@@ -504,13 +523,19 @@ namespace culminate {
         return _row.back();
       }
 
-      Level& level(size_t level)
+      Level& level(size_t lvl)
       {
-        for (size_t i = _level.size(); i <= level; ++i)
+        for (size_t i = _level.size(); i <= lvl; ++i)
         {
           addLevel();
         }
-        return *_levelCache[level];
+        if (lvl < MaxLevels && _levelCache[lvl].valid) {
+          return *_levelCache[lvl].itr;
+        }
+        // Fallback: iterate to find it
+        auto it = _level.begin();
+        std::advance(it, lvl);
+        return *it;
       }
 
       Level& level()
@@ -536,25 +561,20 @@ namespace culminate {
               stream  << names[i].substr(0, size) << level.separator();
             }
             stream << "\n";
-            for(size_t i = 0, iEnd = names.size(); i < iEnd; ++i)
-            {
-              size_t size = i < level.size() ? level.column(i)._width : names[i].size();
-              stream  << std::setfill('-') << std::setw(size) << "" << level.separator();
-            }
-            stream << std::setfill(' ') << "\n";
           }
         };
-        level().updateWidths(names);
+      }
+
+      void title(const std::initializer_list<std::string>& names)
+      {
+        title(std::vector<std::string>(names));
       }
 
     private:
-      using Levels   = std::list<Level>;
-      using LevelItr = Levels::iterator;
-
       std::deque<Row>  _row;
       Levels            _level;
       LevelItr          _current;
-      std::unordered_map<size_t, LevelItr> _levelCache;
+      std::array<LevelCacheEntry, MaxLevels> _levelCache;
 
       std::ostream&     _out;
       std::function<void(std::ostream&, Level&)> _title = nullptr;
@@ -563,7 +583,11 @@ namespace culminate {
       {
           size_t index( _level.size() );
           _level.emplace_back( index ); 
-          return _levelCache[ index ] = std::prev(_level.end());
+          LevelItr it = std::prev(_level.end());
+          if (index < MaxLevels) {
+            _levelCache[index] = {true, it};
+          }
+          return it;
       }
 
       LevelItr nextLevel()
