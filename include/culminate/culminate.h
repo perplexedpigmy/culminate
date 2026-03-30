@@ -186,6 +186,15 @@ namespace culminate {
 
         constexpr bool visible() const { return _visible; }
         Configuration& hide() { _visible = false; return *this; }
+
+        enum class JustifyType { Left, Right, Center };
+        constexpr JustifyType justifyType() const
+        {
+          if (_type == Type::Numeric) return JustifyType::Right;
+          if (_type == Type::Center) return JustifyType::Center;
+          return JustifyType::Left;
+        }
+        
         decorator::Tool justify() const
         {
           if (_type == Type::Numeric) return decorator::right;
@@ -271,7 +280,7 @@ namespace culminate {
       using ConfFunc = std::function<Level::Configuration&()>;
 
       Cell(const std::string& value, ConfFunc getConf)
-      : _confPtr(nullptr), _value(value), _config(getConf), _justifyTool(getConf().justify())
+      : _confPtr(nullptr), _value(value), _config(getConf)
       {
         auto& conf = getConfig();
         conf._width = std::max(conf._width, value.size());
@@ -280,7 +289,16 @@ namespace culminate {
       const std::string& value() const { return _value; }
 
       size_t size() const { return getConfig()._width; }
-      std::ostream& justify(std::ostream& os) const { return _justifyTool(os, _value); }
+      
+      std::ostream& justify(std::ostream& os) const {
+        auto jt = getConfig().justifyType();
+        if (jt == Level::Configuration::JustifyType::Right) {
+          return os << std::right;
+        } else if (jt == Level::Configuration::JustifyType::Center) {
+          return os;  // Center handled in display()
+        }
+        return os << std::left;
+      }
 
       void display(std::ostream& stream) const
       {
@@ -314,7 +332,6 @@ namespace culminate {
       mutable const Level::Configuration* _confPtr;  // Cached pointer
       std::string  _value;
       ConfFunc     _config;
-      decorator::Tool _justifyTool;  // Cached justify function
 
       Level::Configuration& getConfig() const {
         if (!_confPtr) {
