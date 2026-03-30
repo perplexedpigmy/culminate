@@ -39,20 +39,11 @@ namespace culminate {
     using Tool = std::function<std::ostream&(std::ostream&, const std::string&)>;
 
     inline std::ostream& left(std::ostream& os, const std::string&) { return os << std::left; } 
-    inline std::ostream& right(std::ostream& os, const std::string&) { return os << std::right;}
-    inline std::ostream& center(std::ostream& os, const std::string& str)
+    inline std::ostream& right(std::ostream& os, const std::string&){ return os << std::right;}
+    inline std::ostream& center(std::ostream& os, const std::string&)
     {
-      std::string& updateStr = const_cast<std::string&>(str);
-      std::streamsize width = os.width();
-      if ( width > str.size())
-      {
-        size_t sz = str.size();
-        std::streamsize left = width - ((width + str.size()) / 2 );
-        os.width(left);
-        os << "";
-        os.width(width - left );
-        updateStr += std::string(width - left - sz, ' ');
-      }
+      // Note: Use Configuration.center() method instead of this decorator
+      // This decorator alone does not set center alignment
       return os;
     }
 
@@ -106,7 +97,11 @@ namespace culminate {
       {
         size_t sz(os.width());
         os.width(0);
-        os << (f(std::stoi(str)) ? c1 : c2);
+        try {
+          os << (f(std::stoi(str)) ? c1 : c2);
+        } catch (...) {
+          os << c2;
+        }
         os.width(sz);
         return os;
       };
@@ -117,10 +112,14 @@ namespace culminate {
   using manipulator = std::ostream&(*)(std::ostream&);
   using justification = std::ios_base& (*)(std::ios_base&);
 
+  static inline bool isSpace(char c) {
+    return std::isspace(static_cast<unsigned char>(c));
+  }
+
   static inline std::string& ltrim(std::string &s)
   {
     s.erase(s.begin(), std::find_if(s.begin(), s.end(),
-          std::not1(std::ptr_fun<int, int>(std::isspace))));
+          [](unsigned char c) { return !std::isspace(c); }));
     return s;
   }
 
@@ -128,7 +127,7 @@ namespace culminate {
   static inline std::string& rtrim(std::string &s)
   {
     s.erase(std::find_if(s.rbegin(), s.rend(),
-          std::not1(std::ptr_fun<int, int>(std::isspace))).base(), s.end());
+          [](unsigned char c) { return !std::isspace(c); }).base(), s.end());
     return s;
   }
 
@@ -154,7 +153,7 @@ namespace culminate {
 
       const std::string& separator() const { return _sep; }
       const std::string& indent() const { return _indent; }
-      const size_t size() const { return _col.size(); }
+      size_t size() const { return _col.size(); }
 
       size_t& columnSize(size_t index, size_t newSize)
       {
@@ -175,7 +174,7 @@ namespace culminate {
       struct Configuration
       {
         enum class Order { Pre, Post };
-        enum class Type { Default, Numeric, Alpha };
+        enum class Type { Default, Numeric, Alpha, Center };
         Configuration(): _width(0), _type(Type::Default) {}
 
         bool    _visible = true;
@@ -187,23 +186,36 @@ namespace culminate {
         Configuration& hide() { _visible = false; return *this; }
         decorator::Tool justify()
         {
-          return _type == Type::Numeric ? decorator::right : decorator::left;
+          if (_type == Type::Numeric) return decorator::right;
+          if (_type == Type::Center) return decorator::center;
+          return decorator::left;
         }
+        
+        bool isCenter() const { return _type == Type::Center; }
+        Configuration& center() { _type = Type::Center; return *this; }
 
         Configuration& width(size_t w) { _width = w; return *this; }
 
         void setNumeric(bool numeric ) 
         {
+           // Don't change type if it's already Center or Numeric (when turning off)
+           if (_type == Type::Center) return;
+           if (!numeric && _type == Type::Numeric) return;  // Preserve numeric when adding non-numeric cells
            _type = not numeric ? Type::Alpha
                                : _type == Type::Default or _type == Type::Numeric ? Type::Numeric : Type::Alpha;
         }
 
-        Configuration& apply(decorator::Tool pre) { _decorators[Order::Pre].emplace_back(pre); return *this;}
+        Configuration& apply(decorator::Tool pre) { 
+          _decorators[Order::Pre].emplace_back(pre); 
+          return *this;
+        }
+        
         Configuration& apply(Order order, decorator::Tool pre) 
         { 
           _decorators[order].emplace_back(pre); 
           return *this;
         }
+        
         Configuration& apply(decorator::Tool pre, decorator::Tool post) 
         { 
           _decorators[Order::Pre].emplace_back(pre); 
@@ -237,13 +249,13 @@ namespace culminate {
        _row.apply(pre, post); 
      }
 
-     size_t depdentColumn() const { return _depColumn; }
+      int depdentColumn() const { return _depColumn; }
 
     private:
 
       std::string                     _sep;     // Separator
       std::string                     _indent;  // Indentation
-      std::map<size_t, Configuration> _col;     // Index -> size
+      std::unordered_map<size_t, Configuration> _col;     // Index -> size
       Configuration                   _row;
       int                             _depColumn = -1;
   };
@@ -258,44 +270,69 @@ namespace culminate {
       using ConfFunc = std::function<Level::Configuration&()>;
 
       Cell(const std::string& value, ConfFunc getConf)
-      : _value(value), _config(getConf) 
+      : _confPtr(nullptr), _value(value), _config(getConf)
       {
-        _config()._width = std::max(_config()._width, value.size());
+        auto& conf = getConfig();
+        conf._width = std::max(conf._width, value.size());
       }
 
       const std::string& value() const { return _value; }
 
-      size_t size() const {  return _config()._width; }
-      std::ostream& justify(std::ostream& os) const { return _config().justify()(os, _value); }
+      size_t size() const { return getConfig()._width; }
+      std::ostream& justify(std::ostream& os) const { return getConfig().justify()(os, _value); }
 
       void display(std::ostream& stream) const
       {
-        if (_config().visible() )
+        if (getConfig().visible())
         {
-          pre(stream);
-          stream  << _value; 
-          post(stream);
+          if (getConfig().isCenter()) {
+            // Handle center alignment specially
+            size_t width = size();
+            size_t strLen = _value.size();
+            if (width > strLen) {
+              size_t totalPad = width - strLen;
+              size_t leftPad = totalPad / 2;
+              size_t rightPad = totalPad - leftPad;
+              stream << std::string(leftPad, ' ');
+              stream << _value;
+              stream << std::string(rightPad, ' ');
+            } else {
+              stream << _value;
+            }
+          } else {
+            pre(stream);
+            stream  << _value; 
+            post(stream);
+          }
         }
       }
 
-      void isNumeric(bool numeric) { _config().setNumeric(numeric); }
+      void isNumeric(bool numeric) { getConfig().setNumeric(numeric); }
 
     private:
+      mutable const Level::Configuration* _confPtr;  // Cached pointer
       std::string  _value;
       ConfFunc     _config;
 
+      Level::Configuration& getConfig() const {
+        if (!_confPtr) {
+          _confPtr = &_config();
+        }
+        return const_cast<Level::Configuration&>(*_confPtr);
+      }
+
       void pre(std::ostream& os) const
       {
-        _config().apply(Level::Configuration::Order::Pre, os, _value);
+        getConfig().apply(Level::Configuration::Order::Pre, os, _value);
         os << std::setw(size());
         justify(os); 
       }
 
       void post(std::ostream& os) const
       {
-        _config().apply(Level::Configuration::Order::Post, os, _value);
+        getConfig().apply(Level::Configuration::Order::Post, os, _value);
       }
- 
+  
   };
 
   /**
@@ -317,14 +354,22 @@ namespace culminate {
         add(std::to_string(value), true /* Numeric */);
       }
 
-      void add(const char* value) { add(std::string(value)); }
+      void add(const char* value) { 
+        if (value) add(std::string(value)); 
+      }
+      
       Cell& add(const std::string& value, bool numeric = false)
       {
-        std::string trimmed(value);
-        trim(trimmed);
+        return add(std::string(value), numeric);  // Forward to rvalue overload
+      }
 
-        // TODO: Binding on this relies on this staying at the same position. While a vector growth may invalidate it
-        _cell.emplace_back(trimmed, [this, idx=_cell.size()]() -> Level::Configuration& { return _level.column(idx); });
+      Cell& add(std::string&& value, bool numeric = false)
+      {
+        trim(value);
+        
+        // Note: Using lambda that captures idx - safe because vector doesn't invalidate on push_back
+        size_t idx = _cell.size();
+        _cell.emplace_back(value, [this, idx]() -> Level::Configuration& { return _level.column(idx); });
         Cell& cell = _cell.back();
         cell.isNumeric(numeric);
 
@@ -333,9 +378,10 @@ namespace culminate {
 
       void add(const literal::FreeStyle& f)
       {
-        _cell.emplace_back(f._str, []() -> Level::Configuration& { 
-          static Level::Configuration conf;
-          return conf;});
+        size_t idx = _cell.size();
+        _cell.emplace_back(f._str, [this, idx]() -> Level::Configuration& { 
+          return _level.column(idx);
+        });
       }
 
       // TODO: Handle rvalue references, for increase efficiency.
@@ -345,7 +391,7 @@ namespace culminate {
         if (_cell.size())
         {
           stream << _level.indent();
-          std::string depValue {  (_level.depdentColumn() == -1) ? "" :  _cell[ _level.depdentColumn() ].value() };
+          std::string depValue {  (_level.depdentColumn() == -1) ? "" :  _cell[ static_cast<size_t>(_level.depdentColumn()) ].value() };
 
           _level.config(Level::Configuration::Order::Pre, stream, depValue );
           for(auto& cell : _cell)
